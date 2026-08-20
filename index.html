@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 IoT Guide — Telegram, Blynk & Web Server</title>
+<meta name="description" content="ESP32 tutorial for Telegram Bot notifications, Blynk notifications and a custom ESP32 web server dashboard.">
+
+<style>
+@import url('https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/fira_code.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --bg:#1a1b26;
+  --bg-deep:#16161e;
+  --surface:#24283b;
+  --surface-2:#292e42;
+  --surface-3:#1f2335;
+  --border:#3b4261;
+  --fg:#c0caf5;
+  --fg-soft:#a9b1d6;
+  --muted:#565f89;
+  --blue:#7aa2f7;
+  --cyan:#7dcfff;
+  --green:#9ece6a;
+  --teal:#73daca;
+  --yellow:#e0af68;
+  --orange:#ff9e64;
+  --red:#f7768e;
+  --purple:#bb9af7;
+  --shadow:0 18px 50px rgba(0,0,0,.25);
+  --radius:14px;
+  --font-body:'Inter',system-ui,sans-serif;
+  --font-mono:'Fira Code',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(122,162,247,.08), transparent 26rem),
+    radial-gradient(circle at 100% 10%, rgba(187,154,247,.07), transparent 28rem),
+    var(--bg);
+  color:var(--fg-soft);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.7;
+}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+code,pre{font-family:var(--font-mono)}
+::selection{background:rgba(122,162,247,.28);color:#fff}
+
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(26,27,38,.9);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.topbar-inner{
+  width:min(1180px,calc(100% - 32px));
+  margin:auto;
+  min-height:64px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--fg);white-space:nowrap}
+.brand-icon{width:12px;height:12px;border-radius:4px;background:linear-gradient(135deg,var(--blue),var(--purple));box-shadow:0 0 18px rgba(122,162,247,.55)}
+.brand small{color:var(--muted);font:500 11px var(--font-mono)}
+.top-actions{display:flex;align-items:center;gap:12px;min-width:0}
+.nav{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{color:var(--muted);font-size:13px;padding:8px 10px;border-radius:8px;white-space:nowrap;font-weight:600}
+.nav a:hover,.nav a.active{color:var(--fg);background:var(--surface);text-decoration:none}
+.lang-switch{display:flex;gap:4px;padding:4px;border:1px solid var(--border);background:var(--surface-3);border-radius:9px;flex-shrink:0}
+.lang-btn{border:0;background:transparent;color:var(--muted);padding:6px 9px;border-radius:6px;font:600 11px var(--font-mono);cursor:pointer}
+.lang-btn.active{background:var(--blue);color:var(--bg-deep)}
+
+.hero{
+  width:min(1180px,calc(100% - 32px));
+  margin:auto;
+  padding:86px 0 58px;
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  gap:48px;
+  align-items:center;
+}
+.hero-kicker{font:13px var(--font-mono);color:var(--green);margin-bottom:14px}
+.hero h1{margin:0;color:var(--fg);font-size:clamp(36px,6vw,68px);line-height:1.05;letter-spacing:-.045em}
+.hero h1 .blue{color:var(--blue)}
+.hero h1 .purple{color:var(--purple)}
+.hero p{max-width:68ch;font-size:17px;margin:22px 0 0}
+.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid var(--border);background:var(--surface);color:var(--fg);border-radius:9px;font-weight:700}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--bg-deep)}
+.btn:hover{text-decoration:none;filter:brightness(1.07)}
+
+.terminal{border:1px solid var(--border);background:var(--bg-deep);border-radius:15px;overflow:hidden;box-shadow:var(--shadow)}
+.terminal-bar{height:42px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:7px}
+.term-dot{width:9px;height:9px;border-radius:50%}.r{background:var(--red)}.y{background:var(--yellow)}.g{background:var(--green)}
+.terminal-body{padding:20px;font:13px/1.85 var(--font-mono)}
+.t-blue{color:var(--blue)}.t-green{color:var(--green)}.t-yellow{color:var(--yellow)}.t-purple{color:var(--purple)}.t-muted{color:var(--muted)}
+
+.container{width:min(1180px,calc(100% - 32px));margin:auto}
+.overview{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:72px}
+.overview-card{border:1px solid var(--border);background:linear-gradient(180deg,rgba(36,40,59,.95),rgba(31,35,53,.95));border-radius:var(--radius);padding:24px}
+.overview-card.telegram{border-top:3px solid var(--cyan)}.overview-card.blynk{border-top:3px solid var(--purple)}.overview-card.server{border-top:3px solid var(--green)}
+.overview-card .num{color:var(--muted);font:12px var(--font-mono)}
+.overview-card h3{color:var(--fg);margin:8px 0 6px;font-size:19px}
+.overview-card p{margin:0;font-size:14px}
+
+.section{padding:72px 0;border-top:1px solid rgba(59,66,97,.72);scroll-margin-top:72px}
+.section-title-row{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.section-index{font:13px var(--font-mono);color:var(--muted)}
+.section h2{margin:0;color:var(--fg);font-size:clamp(28px,4vw,42px);letter-spacing:-.03em}
+.section-lead{max-width:74ch;margin:10px 0 30px 34px}
+.subhead{color:var(--fg);font-size:19px;margin:34px 0 12px}
+
+.step-list{display:grid;gap:14px}
+.step{display:grid;grid-template-columns:44px 1fr;gap:15px;padding:20px;border:1px solid var(--border);background:rgba(36,40,59,.72);border-radius:12px}
+.step-num{height:38px;width:38px;border-radius:10px;display:grid;place-items:center;background:var(--surface-2);color:var(--blue);font:700 12px var(--font-mono);border:1px solid var(--border)}
+.step h3{margin:0 0 6px;font-size:15px;color:var(--fg)}
+.step p{margin:0 0 7px}.step p:last-child{margin-bottom:0}
+.kbd{font:12px var(--font-mono);color:var(--fg);background:var(--surface-3);border:1px solid var(--border);border-radius:5px;padding:2px 7px}
+
+.callout{margin:16px 0;padding:14px 16px;border:1px solid var(--border);border-left:3px solid var(--yellow);background:rgba(31,35,53,.8);border-radius:8px}
+.callout.info{border-left-color:var(--blue)}.callout.success{border-left-color:var(--green)}.callout.danger{border-left-color:var(--red)}
+
+.shot{width:min(100%,760px);margin:16px 0;border:1px solid var(--border);background:var(--bg-deep);border-radius:12px;overflow:hidden}
+.shot.small{width:min(100%,500px)}
+.shot img{display:block;width:100%;height:auto}
+.shot .cap{padding:10px 13px;color:var(--muted);font:12px var(--font-mono);border-top:1px solid var(--border)}
+
+.codebox{margin:15px 0;border:1px solid var(--border);background:var(--bg-deep);border-radius:12px;overflow:hidden}
+.codebar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+.codebar span{color:var(--muted);font:12px var(--font-mono)}
+.copy{border:1px solid var(--border);background:transparent;color:var(--fg-soft);font:11px var(--font-mono);padding:5px 9px;border-radius:6px;cursor:pointer}
+.copy:hover{background:var(--surface-2);color:var(--fg)}
+pre{margin:0;padding:18px;overflow:auto;color:var(--fg);font-size:12.5px;line-height:1.75;max-height:560px}
+.inline-code{display:block;margin:9px 0;padding:10px 13px;border:1px solid var(--border);border-radius:8px;background:var(--bg-deep);color:var(--green);font-family:var(--font-mono);overflow-x:auto}
+
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.card{border:1px solid var(--border);background:rgba(36,40,59,.75);border-radius:12px;padding:20px}
+.card h3{color:var(--fg);margin:0 0 10px;font-size:16px}
+.card ul{margin:0;padding-left:20px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;border:1px solid var(--border);background:rgba(31,35,53,.76)}
+th,td{padding:12px 14px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+td{font-size:13px}
+tr:last-child td{border-bottom:none}
+
+.flow{margin:24px 0;display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.flow-item{position:relative;padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);text-align:center;color:var(--fg);font-weight:600;font-size:13px}
+.flow-item:not(:last-child)::after{content:"→";position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:var(--purple);z-index:3}
+
+.footer{width:min(1180px,calc(100% - 32px));margin:auto;padding:34px 0 60px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.status{display:flex;align-items:center;gap:8px}.status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(158,206,106,.7)}
+
+[data-lang]{display:none}
+html[lang="en"] [data-lang="en"]{display:revert}
+html[lang="ms"] [data-lang="ms"]{display:revert}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;padding-top:58px}
+  .overview,.grid-2,.flow{grid-template-columns:1fr}
+  .flow-item:not(:last-child)::after{content:"↓";right:auto;left:50%;top:auto;bottom:-14px;transform:translateX(-50%)}
+}
+@media(max-width:700px){
+  .topbar-inner{align-items:flex-start;flex-direction:column;padding:11px 0}
+  .top-actions{width:100%;justify-content:space-between}
+  .nav{width:100%}
+  .brand small{display:none}
+  .hero{padding:42px 0}
+  .section{padding:54px 0}
+  .section-lead{margin-left:0}
+  .step{grid-template-columns:38px 1fr;padding:16px}
+}
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-icon"></span>
+      ESP32 IoT Guide
+      <small>// telegram · blynk · web-server</small>
+    </div>
+
+    <div class="top-actions">
+      <nav class="nav" id="nav">
+        <a href="#overview" class="active">
+          <span data-lang="en">Overview</span><span data-lang="ms">Gambaran Keseluruhan</span>
+        </a>
+        <a href="#telegram">Telegram</a>
+        <a href="#blynk">Blynk</a>
+        <a href="#webserver">
+          <span data-lang="en">Web Server</span><span data-lang="ms">Pelayan Web</span>
+        </a>
+        <a href="#compare">
+          <span data-lang="en">Compare</span><span data-lang="ms">Perbandingan</span>
+        </a>
+      </nav>
+
+      <div class="lang-switch" aria-label="Language selector">
+        <button class="lang-btn active" id="lang-en" type="button">EN</button>
+        <button class="lang-btn" id="lang-ms" type="button">BM</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="hero-kicker">
+      <span data-lang="en">ESP32 / IoT / Notification / Dashboard</span>
+      <span data-lang="ms">ESP32 / IoT / Notifikasi / Papan Pemuka</span>
+    </div>
+
+    <h1 data-lang="en">
+      Build ESP32 IoT projects with <span class="blue">notifications</span>
+      and a <span class="purple">custom dashboard</span>.
+    </h1>
+    <h1 data-lang="ms">
+      Bina projek IoT ESP32 dengan <span class="blue">notifikasi</span>
+      dan <span class="purple">papan pemuka tersuai</span>.
+    </h1>
+
+    <p data-lang="en">
+      A practical guide to three common ESP32 approaches: Telegram Bot notifications,
+      Blynk Events &amp; Notifications, and a custom dashboard hosted directly by the ESP32 web server.
+    </p>
+    <p data-lang="ms">
+      Panduan praktikal untuk tiga pendekatan ESP32 yang biasa digunakan: notifikasi Telegram Bot,
+      Blynk Events &amp; Notifications, dan papan pemuka tersuai yang dihoskan terus oleh pelayan web ESP32.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn primary" href="#telegram">
+        <span data-lang="en">Start Tutorial</span><span data-lang="ms">Mulakan Tutorial</span>
+      </a>
+      <a class="btn" href="https://iamsyahirah.github.io/dashboard-simulator/" target="_blank" rel="noopener">
+        <span data-lang="en">Open Dashboard Demo</span><span data-lang="ms">Buka Demo Papan Pemuka</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+    </div>
+    <div class="terminal-body">
+      <span class="t-muted">$</span> esp32-iot-guide<br>
+      <span class="t-blue">→</span> Telegram Bot <span class="t-green">ready</span><br>
+      <span class="t-blue">→</span> Blynk Events <span class="t-green">ready</span><br>
+      <span class="t-blue">→</span> Web Dashboard <span class="t-green">ready</span><br><br>
+      <span class="t-yellow">sensor:</span> DHT11<br>
+      <span class="t-yellow">controller:</span> ESP32<br>
+      <span class="t-yellow">alert:</span> 30.0 °C<br><br>
+      <span class="t-purple">status:</span> monitoring...
+    </div>
+  </div>
+</section>
+
+<main class="container">
+
+<section class="overview section" id="overview" style="border-top:0;padding-top:0;">
+  <article class="overview-card telegram">
+    <div class="num">01</div>
+    <h3>Telegram Bot</h3>
+    <p data-lang="en">Create a BotFather bot, obtain your Chat ID, connect the bot to ESP32, and send temperature alerts to Telegram.</p>
+    <p data-lang="ms">Cipta bot menggunakan BotFather, dapatkan Chat ID, sambungkan bot kepada ESP32, dan hantar amaran suhu melalui Telegram.</p>
+  </article>
+
+  <article class="overview-card blynk">
+    <div class="num">02</div>
+    <h3 data-lang="en">Blynk Notification</h3>
+    <h3 data-lang="ms">Notifikasi Blynk</h3>
+    <p data-lang="en">Configure Blynk Events &amp; Notifications and trigger push or email alerts using <code>Blynk.logEvent()</code>.</p>
+    <p data-lang="ms">Tetapkan Blynk Events &amp; Notifications dan cetuskan notifikasi push atau emel menggunakan <code>Blynk.logEvent()</code>.</p>
+  </article>
+
+  <article class="overview-card server">
+    <div class="num">03</div>
+    <h3 data-lang="en">ESP32 Web Server</h3>
+    <h3 data-lang="ms">Pelayan Web ESP32</h3>
+    <p data-lang="en">Create your own HTML, CSS and JavaScript dashboard and host it directly on the ESP32 without using an IoT dashboard platform.</p>
+    <p data-lang="ms">Cipta papan pemuka HTML, CSS dan JavaScript anda sendiri dan hoskannya terus pada ESP32 tanpa menggunakan platform papan pemuka IoT.</p>
+  </article>
+</section>
+
+<!-- TELEGRAM -->
+<section class="section" id="telegram">
+  <div class="section-title-row">
+    <span class="section-index">01</span>
+    <h2 data-lang="en">Telegram Bot Notification</h2>
+    <h2 data-lang="ms">Notifikasi Telegram Bot</h2>
+  </div>
+
+  <p class="section-lead" data-lang="en">
+    Use Telegram when you want the ESP32 to send direct messages to your phone.
+    The example below monitors a DHT11 sensor and sends a warning when the temperature reaches the specified limit.
+  </p>
+  <p class="section-lead" data-lang="ms">
+    Gunakan Telegram apabila anda mahu ESP32 menghantar mesej terus ke telefon anda.
+    Contoh di bawah memantau sensor DHT11 dan menghantar amaran apabila suhu mencapai had yang ditetapkan.
+  </p>
+
+  <h3 class="subhead" data-lang="en">A. Create the Telegram Bot</h3>
+  <h3 class="subhead" data-lang="ms">A. Cipta Telegram Bot</h3>
+
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div>
+        <h3 data-lang="en">Open BotFather</h3>
+        <h3 data-lang="ms">Buka BotFather</h3>
+        <p data-lang="en">Open Telegram and search for <span class="kbd">@BotFather</span>. Make sure you select the official verified BotFather account.</p>
+        <p data-lang="ms">Buka Telegram dan cari <span class="kbd">@BotFather</span>. Pastikan anda memilih akaun rasmi BotFather yang telah disahkan.</p>
+
+        <div class="shot small">
+          <img src="images/botfather-header.png" alt="Official BotFather verified Telegram account">
+          <div class="cap" data-lang="en">Official verified BotFather account</div>
+          <div class="cap" data-lang="ms">Akaun rasmi BotFather yang telah disahkan</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">02</div>
+      <div>
+        <h3 data-lang="en">Create a new bot</h3>
+        <h3 data-lang="ms">Cipta bot baharu</h3>
+        <p data-lang="en">Send the following command to BotFather:</p>
+        <p data-lang="ms">Hantar arahan berikut kepada BotFather:</p>
+        <span class="inline-code">/newbot</span>
+        <p data-lang="en">BotFather will ask you to choose a name for your bot. Enter any suitable name, for example <span class="kbd">ESP32 Temperature Alert</span>.</p>
+        <p data-lang="ms">BotFather akan meminta anda memilih nama untuk bot anda. Masukkan nama yang sesuai, contohnya <span class="kbd">ESP32 Temperature Alert</span>.</p>
+
+        <div class="shot">
+          <img src="images/newbot-command.png" alt="Telegram BotFather newbot command">
+          <div class="cap" data-lang="en">Create a bot using /newbot</div>
+          <div class="cap" data-lang="ms">Cipta bot menggunakan /newbot</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">03</div>
+      <div>
+        <h3 data-lang="en">Create a username</h3>
+        <h3 data-lang="ms">Cipta nama pengguna</h3>
+        <p data-lang="en">BotFather will ask for a username. The username must end with <span class="kbd">bot</span>, for example <span class="kbd">esp32_temp_alert_bot</span>. If the username is already taken, choose another one.</p>
+        <p data-lang="ms">BotFather akan meminta nama pengguna. Nama pengguna mesti berakhir dengan <span class="kbd">bot</span>, contohnya <span class="kbd">esp32_temp_alert_bot</span>. Jika nama pengguna tersebut telah digunakan, pilih nama yang lain.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">04</div>
+      <div>
+        <h3 data-lang="en">Copy and save the Bot Token</h3>
+        <h3 data-lang="ms">Salin dan simpan Bot Token</h3>
+        <p data-lang="en">After the bot is created, BotFather will provide an HTTP API token. Save the token because it will be used in the ESP32 program.</p>
+        <p data-lang="ms">Selepas bot dicipta, BotFather akan memberikan token HTTP API. Simpan token tersebut kerana ia akan digunakan dalam program ESP32.</p>
+
+        <div class="shot">
+          <img src="images/bot-token.png" alt="Telegram BotFather bot token example">
+          <div class="cap" data-lang="en">Example of the BotFather confirmation message and Bot Token</div>
+          <div class="cap" data-lang="ms">Contoh mesej pengesahan BotFather dan Bot Token</div>
+        </div>
+
+        <div class="callout danger" data-lang="en">
+          <strong>Important:</strong> Keep your Bot Token secure. Anyone who has the token may be able to control your bot.
+        </div>
+        <div class="callout danger" data-lang="ms">
+          <strong>Penting:</strong> Pastikan Bot Token anda disimpan dengan selamat. Sesiapa yang mempunyai token tersebut mungkin boleh mengawal bot anda.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="subhead" data-lang="en">B. Start Your Bot</h3>
+  <h3 class="subhead" data-lang="ms">B. Mulakan Bot Anda</h3>
+
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">05</div>
+      <div>
+        <h3 data-lang="en">Open your new bot</h3>
+        <h3 data-lang="ms">Buka bot baharu anda</h3>
+        <p data-lang="en">Open the bot link provided by BotFather and press <span class="kbd">START</span>, or send:</p>
+        <p data-lang="ms">Buka pautan bot yang diberikan oleh BotFather dan tekan <span class="kbd">START</span>, atau hantar:</p>
+        <span class="inline-code">/start</span>
+
+        <div class="shot">
+          <img src="images/start-command.png" alt="Telegram start command sent to bot">
+          <div class="cap" data-lang="en">Start the conversation with /start</div>
+          <div class="cap" data-lang="ms">Mulakan perbualan dengan /start</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="subhead" data-lang="en">C. Get Your Telegram Chat ID</h3>
+  <h3 class="subhead" data-lang="ms">C. Dapatkan Telegram Chat ID</h3>
+
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">06</div>
+      <div>
+        <h3 data-lang="en">Send a message to your bot</h3>
+        <h3 data-lang="ms">Hantar mesej kepada bot anda</h3>
+        <p data-lang="en">Send a simple message such as:</p>
+        <p data-lang="ms">Hantar mesej ringkas seperti:</p>
+        <span class="inline-code">hello</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">07</div>
+      <div>
+        <h3 data-lang="en">Use getUpdates</h3>
+        <h3 data-lang="ms">Gunakan getUpdates</h3>
+        <p data-lang="en">Open a web browser and enter the following address. Replace <span class="kbd">&lt;YOUR_BOT_TOKEN&gt;</span> with your actual Bot Token:</p>
+        <p data-lang="ms">Buka pelayar web dan masukkan alamat berikut. Gantikan <span class="kbd">&lt;YOUR_BOT_TOKEN&gt;</span> dengan Bot Token sebenar anda:</p>
+        <span class="inline-code">https://api.telegram.org/bot&lt;YOUR_BOT_TOKEN&gt;/getUpdates</span>
+        <p data-lang="en">Look for the number inside <span class="kbd">"chat": {"id": ...}</span>. This number is your Chat ID. Save it for use in the ESP32 program.</p>
+        <p data-lang="ms">Cari nombor di dalam <span class="kbd">"chat": {"id": ...}</span>. Nombor tersebut ialah Chat ID anda. Simpan nombor ini untuk digunakan dalam program ESP32.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="subhead" data-lang="en">D. Install the Required Arduino Libraries</h3>
+  <h3 class="subhead" data-lang="ms">D. Pasang Pustaka Arduino yang Diperlukan</h3>
+
+  <div class="callout info" data-lang="en">
+    In Arduino IDE, open <strong>Library Manager</strong> and install <strong>UniversalTelegramBot</strong>,
+    <strong>ArduinoJson</strong>, and the appropriate <strong>DHT sensor library</strong>.
+  </div>
+  <div class="callout info" data-lang="ms">
+    Dalam Arduino IDE, buka <strong>Library Manager</strong> dan pasang <strong>UniversalTelegramBot</strong>,
+    <strong>ArduinoJson</strong>, serta <strong>pustaka sensor DHT</strong> yang sesuai.
+  </div>
+
+  <h3 class="subhead" data-lang="en">E. Demo ESP32 Code</h3>
+  <h3 class="subhead" data-lang="ms">E. Kod Demo ESP32</h3>
+
+  <div class="codebox">
+    <div class="codebar">
+      <span>esp32_telegram_alert.ino</span>
+      <button class="copy" data-copy="telegram-code"><span data-lang="en">Copy</span><span data-lang="ms">Salin</span></button>
+    </div>
+<pre id="telegram-code"><code>#include &lt;WiFi.h&gt;
+#include &lt;WiFiClientSecure.h&gt;
+#include &lt;UniversalTelegramBot.h&gt;
+#include &lt;DHT.h&gt;
+
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+#define BOT_TOKEN "YOUR_BOT_TOKEN"
+#define CHAT_ID "YOUR_CHAT_ID"
+
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOT_TOKEN, client);
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+#define ALERT_PIN 25
+
+float temperatureLimit = 30.0;
+bool alertSent = false;
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  pinMode(ALERT_PIN, OUTPUT);
+  digitalWrite(ALERT_PIN, LOW);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  client.setInsecure();
+
+  bot.sendMessage(
+    CHAT_ID,
+    "ESP32 Temperature Monitoring System Started",
+    ""
+  );
+}
+
+void loop() {
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("Failed to read DHT11!");
+    delay(2000);
+    return;
+  }
+
+  if (temperature >= temperatureLimit) {
+    digitalWrite(ALERT_PIN, HIGH);
+
+    if (!alertSent) {
+      String message = "⚠️ HIGH TEMPERATURE WARNING!\n\n";
+      message += "Temperature: " + String(temperature, 1) + " °C\n";
+      message += "Humidity: " + String(humidity, 1) + " %\n\n";
+      message += "Temperature is above ";
+      message += String(temperatureLimit, 1);
+      message += " °C!";
+
+      bot.sendMessage(CHAT_ID, message, "");
+      alertSent = true;
+    }
+  } else {
+    digitalWrite(ALERT_PIN, LOW);
+    alertSent = false;
+  }
+
+  delay(2000);
+}</code></pre>
+  </div>
+
+  <div class="callout success" data-lang="en">
+    Replace <span class="kbd">YOUR_WIFI_NAME</span>, <span class="kbd">YOUR_WIFI_PASSWORD</span>,
+    <span class="kbd">YOUR_BOT_TOKEN</span>, and <span class="kbd">YOUR_CHAT_ID</span>
+    with your own information before uploading the program.
+  </div>
+  <div class="callout success" data-lang="ms">
+    Gantikan <span class="kbd">YOUR_WIFI_NAME</span>, <span class="kbd">YOUR_WIFI_PASSWORD</span>,
+    <span class="kbd">YOUR_BOT_TOKEN</span>, dan <span class="kbd">YOUR_CHAT_ID</span>
+    dengan maklumat anda sendiri sebelum memuat naik program.
+  </div>
+
+  <h3 class="subhead" data-lang="en">F. Example Telegram Notification</h3>
+  <h3 class="subhead" data-lang="ms">F. Contoh Notifikasi Telegram</h3>
+  <div class="shot small">
+    <img src="images/telegram-alerts.png" alt="Telegram ESP32 high temperature warning">
+    <div class="cap" data-lang="en">Example startup message and high-temperature warning</div>
+    <div class="cap" data-lang="ms">Contoh mesej permulaan dan amaran suhu tinggi</div>
+  </div>
+</section>
+
+<!-- BLYNK -->
+<section class="section" id="blynk">
+  <div class="section-title-row">
+    <span class="section-index">02</span>
+    <h2 data-lang="en">Blynk Notification for ESP32</h2>
+    <h2 data-lang="ms">Notifikasi Blynk untuk ESP32</h2>
+  </div>
+
+  <p class="section-lead" data-lang="en">
+    Blynk can be used when you want a ready-made IoT platform with a mobile dashboard,
+    push notifications and optional email notifications.
+  </p>
+  <p class="section-lead" data-lang="ms">
+    Blynk boleh digunakan apabila anda mahukan platform IoT sedia ada dengan papan pemuka mudah alih,
+    notifikasi push dan pilihan notifikasi emel.
+  </p>
+
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div>
+        <h3 data-lang="en">Open Blynk Cloud</h3>
+        <h3 data-lang="ms">Buka Blynk Cloud</h3>
+        <p data-lang="en">Go to <a href="https://blynk.cloud" target="_blank" rel="noopener">blynk.cloud</a>.</p>
+        <p data-lang="ms">Pergi ke <a href="https://blynk.cloud" target="_blank" rel="noopener">blynk.cloud</a>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">02</div>
+      <div>
+        <h3 data-lang="en">Open Events &amp; Notifications</h3>
+        <h3 data-lang="ms">Buka Events &amp; Notifications</h3>
+        <p data-lang="en">Go to <strong>Developer Zone → select your Template → Events &amp; Notifications</strong>.</p>
+        <p data-lang="ms">Pergi ke <strong>Developer Zone → pilih Template anda → Events &amp; Notifications</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">03</div>
+      <div>
+        <h3 data-lang="en">Create a new event</h3>
+        <h3 data-lang="ms">Cipta event baharu</h3>
+        <p data-lang="en">In Events &amp; Notifications, click <strong>Edit</strong>. Then select <strong>Add New Event</strong> and fill in the required information.</p>
+        <p data-lang="ms">Dalam Events &amp; Notifications, klik <strong>Edit</strong>. Kemudian pilih <strong>Add New Event</strong> dan isi maklumat yang diperlukan.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="subhead" data-lang="en">General Section</h3>
+  <h3 class="subhead" data-lang="ms">Bahagian General</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th data-lang="en">Setting</th><th data-lang="ms">Tetapan</th>
+          <th data-lang="en">Value</th><th data-lang="ms">Nilai</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Event Name</td><td>High Temperature</td></tr>
+        <tr><td>Event Code</td><td><span class="kbd">high_temperature</span></td></tr>
+        <tr><td>Type</td><td>Warning</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="subhead" data-lang="en">Notification Section</h3>
+  <h3 class="subhead" data-lang="ms">Bahagian Notification</h3>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3 data-lang="en">Enable Notifications</h3>
+      <h3 data-lang="ms">Aktifkan Notifications</h3>
+      <ul>
+        <li>Email to: Device Owner</li>
+        <li>Push Notification to: Device Owner</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 data-lang="en">Visibility</h3>
+      <h3 data-lang="ms">Paparan</h3>
+      <ul>
+        <li>Device Page (App and Console)</li>
+        <li>Home Screen (App only)</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="subhead" data-lang="en">Limit Section</h3>
+  <h3 class="subhead" data-lang="ms">Bahagian Limit</h3>
+
+  <div class="callout" data-lang="en">
+    Set <strong>Every 1 message will trigger the event</strong> and
+    <strong>Event will be sent to the user only once per 1 minute</strong>.
+    One message per minute is suitable for a demonstration. You can change the settings according to your project requirements.
+  </div>
+  <div class="callout" data-lang="ms">
+    Tetapkan <strong>Every 1 message will trigger the event</strong> dan
+    <strong>Event will be sent to the user only once per 1 minute</strong>.
+    Satu mesej setiap satu minit sesuai untuk tujuan demonstrasi. Anda boleh mengubah tetapan ini mengikut keperluan projek anda.
+  </div>
+
+  <h3 class="subhead" data-lang="en">Add the Notification Code</h3>
+  <h3 class="subhead" data-lang="ms">Masukkan Kod Notifikasi</h3>
+
+  <p data-lang="en">Next, add the notification code to your ESP32 program. An example is shown below:</p>
+  <p data-lang="ms">Seterusnya, masukkan kod notifikasi ke dalam program ESP32 anda. Contoh ditunjukkan di bawah:</p>
+
+  <div class="codebox">
+    <div class="codebar">
+      <span>Blynk.logEvent() example</span>
+      <button class="copy" data-copy="blynk-code"><span data-lang="en">Copy</span><span data-lang="ms">Salin</span></button>
+    </div>
+<pre id="blynk-code"><code>if (!notificationSent)
+{
+  String message = "High Temperature Alert! ";
+  message += String(temperature, 1);
+  message += " °C";
+
+  Blynk.logEvent(
+    "high_temperature",
+    message
+  );
+
+  Serial.println("Blynk notification sent!");
+  notificationSent = true;
+}</code></pre>
+  </div>
+
+  <div class="callout info" data-lang="en">
+    Make sure the event code used in your ESP32 program,
+    <span class="kbd">"high_temperature"</span>, is exactly the same as the Event Code created in Blynk.
+  </div>
+  <div class="callout info" data-lang="ms">
+    Pastikan event code yang digunakan dalam program ESP32 anda,
+    <span class="kbd">"high_temperature"</span>, sama seperti Event Code yang dicipta dalam Blynk.
+  </div>
+
+  <p data-lang="en">
+    Finally, upload the program to the ESP32. When the specified condition is met,
+    such as when the temperature exceeds the set limit, Blynk will send a notification.
+  </p>
+  <p data-lang="ms">
+    Akhir sekali, muat naik program ke ESP32. Apabila syarat yang ditetapkan dipenuhi,
+    contohnya apabila suhu melebihi had yang ditetapkan, Blynk akan menghantar notifikasi.
+  </p>
+
+  <div class="callout success" data-lang="en">
+    Push notifications are received through the Blynk mobile app, not through the web browser.
+    If email notification is enabled, the notification can also be sent to the device owner's email.
+  </div>
+  <div class="callout success" data-lang="ms">
+    Notifikasi push diterima melalui aplikasi mudah alih Blynk, bukan melalui pelayar web.
+    Jika notifikasi emel diaktifkan, notifikasi juga boleh dihantar ke emel pemilik peranti.
+  </div>
+</section>
+
+<!-- WEB SERVER -->
+<section class="section" id="webserver">
+  <div class="section-title-row">
+    <span class="section-index">03</span>
+    <h2 data-lang="en">ESP32 Web Server Dashboard</h2>
+    <h2 data-lang="ms">Papan Pemuka Pelayan Web ESP32</h2>
+  </div>
+
+  <p class="section-lead" data-lang="en">
+    If you do not want to use an IoT dashboard platform such as Blynk or Arduino IoT Cloud,
+    you can create your own web-based dashboard for the ESP32 using HTML, CSS and JavaScript.
+  </p>
+  <p class="section-lead" data-lang="ms">
+    Jika anda tidak mahu menggunakan platform papan pemuka IoT seperti Blynk atau Arduino IoT Cloud,
+    anda boleh membina papan pemuka berasaskan web anda sendiri untuk ESP32 menggunakan HTML, CSS dan JavaScript.
+  </p>
+
+  <div class="flow">
+    <div class="flow-item"><span data-lang="en">Describe project flow</span><span data-lang="ms">Terangkan aliran projek</span></div>
+    <div class="flow-item"><span data-lang="en">Create index.html</span><span data-lang="ms">Cipta index.html</span></div>
+    <div class="flow-item"><span data-lang="en">Test the dashboard</span><span data-lang="ms">Uji papan pemuka</span></div>
+    <div class="flow-item"><span data-lang="en">Create dashboard.h</span><span data-lang="ms">Cipta dashboard.h</span></div>
+    <div class="flow-item"><span data-lang="en">Upload to ESP32</span><span data-lang="ms">Muat naik ke ESP32</span></div>
+  </div>
+
+  <h3 class="subhead" data-lang="en">A. Create the Dashboard Using index.html</h3>
+  <h3 class="subhead" data-lang="ms">A. Cipta Papan Pemuka Menggunakan index.html</h3>
+
+  <p data-lang="en">
+    You can first create the dashboard as an <span class="kbd">index.html</span> file.
+    You can use vibe coding with ChatGPT by describing how your project works,
+    what sensors and outputs you are using, and how you want the dashboard to look.
+  </p>
+  <p data-lang="ms">
+    Anda boleh mula dengan mencipta papan pemuka sebagai fail <span class="kbd">index.html</span>.
+    Anda boleh menggunakan vibe coding dengan ChatGPT dengan menerangkan bagaimana projek anda berfungsi,
+    sensor dan output yang digunakan, serta bagaimana anda mahu reka bentuk papan pemuka tersebut.
+  </p>
+
+  <h3 class="subhead" data-lang="en">B. Explain the Project Flow</h3>
+  <h3 class="subhead" data-lang="ms">B. Terangkan Aliran Projek</h3>
+
+  <div class="card">
+    <p data-lang="en">For example, explain the following information:</p>
+    <p data-lang="ms">Sebagai contoh, terangkan maklumat berikut:</p>
+    <ul>
+      <li><span data-lang="en">What sensors are used</span><span data-lang="ms">Sensor yang digunakan</span></li>
+      <li><span data-lang="en">What data should be displayed</span><span data-lang="ms">Data yang perlu dipaparkan</span></li>
+      <li><span data-lang="en">What devices need to be controlled</span><span data-lang="ms">Peranti yang perlu dikawal</span></li>
+      <li><span data-lang="en">What buttons, indicators, gauges or status information are required</span><span data-lang="ms">Butang, indikator, meter atau maklumat status yang diperlukan</span></li>
+      <li><span data-lang="en">How Automatic and Manual modes should work</span><span data-lang="ms">Bagaimana mod Automatik dan Manual perlu berfungsi</span></li>
+    </ul>
+  </div>
+
+  <p data-lang="en">
+    Then, ask ChatGPT to generate the <span class="kbd">index.html</span> code for the dashboard.
+    After the dashboard is completed, you can ask ChatGPT to combine and integrate the dashboard with your existing ESP32 code.
+  </p>
+  <p data-lang="ms">
+    Kemudian, minta ChatGPT menjana kod <span class="kbd">index.html</span> untuk papan pemuka tersebut.
+    Selepas papan pemuka siap, anda boleh meminta ChatGPT menggabungkan dan mengintegrasikan papan pemuka tersebut dengan kod ESP32 sedia ada.
+  </p>
+
+  <h3 class="subhead" data-lang="en">C. Example Prompt</h3>
+  <h3 class="subhead" data-lang="ms">C. Contoh Prompt</h3>
+
+  <div class="codebox">
+    <div class="codebar">
+      <span>prompt.txt</span>
+      <button class="copy" data-copy="prompt-en"><span data-lang="en">Copy</span><span data-lang="ms">Salin</span></button>
+    </div>
+<pre id="prompt-en" data-lang="en"><code>Create an index.html dashboard for my ESP32 IoT project.
+
+Hardware:
+- ESP32
+- DHT11 temperature and humidity sensor
+- LED
+- Buzzer
+
+Dashboard requirements:
+- Show temperature and humidity
+- Show LED and buzzer status
+- Include Automatic and Manual modes
+- Automatic mode: activate LED and buzzer when
+  temperature reaches the temperature limit
+- Manual mode: allow the buzzer to be controlled
+  using an ON/OFF button
+- Show a warning message when temperature is high
+- Make the dashboard responsive for laptop and mobile</code></pre>
+
+<pre id="prompt-ms" data-lang="ms"><code>Cipta papan pemuka index.html untuk projek IoT ESP32 saya.
+
+Perkakasan:
+- ESP32
+- Sensor suhu dan kelembapan DHT11
+- LED
+- Buzzer
+
+Keperluan papan pemuka:
+- Paparkan suhu dan kelembapan
+- Paparkan status LED dan buzzer
+- Sediakan mod Automatik dan Manual
+- Mod Automatik: aktifkan LED dan buzzer apabila
+  suhu mencapai had suhu yang ditetapkan
+- Mod Manual: benarkan buzzer dikawal menggunakan
+  butang ON/OFF
+- Paparkan mesej amaran apabila suhu tinggi
+- Pastikan papan pemuka responsif untuk komputer riba dan telefon</code></pre>
+  </div>
+
+  <h3 class="subhead" data-lang="en">D. Create dashboard.h</h3>
+  <h3 class="subhead" data-lang="ms">D. Cipta dashboard.h</h3>
+
+  <p data-lang="en">
+    For better code organization, you can create a separate file called <span class="kbd">dashboard.h</span>.
+    The HTML, CSS and JavaScript code for the dashboard can be stored inside this file.
+  </p>
+  <p data-lang="ms">
+    Untuk penyusunan kod yang lebih baik, anda boleh mencipta fail berasingan bernama <span class="kbd">dashboard.h</span>.
+    Kod HTML, CSS dan JavaScript bagi papan pemuka boleh disimpan di dalam fail ini.
+  </p>
+
+  <p data-lang="en">Your main ESP32 program can then include it using:</p>
+  <p data-lang="ms">Program utama ESP32 anda kemudian boleh memasukkannya menggunakan:</p>
+  <span class="inline-code">#include "dashboard.h"</span>
+
+  <div class="callout danger" data-lang="en">
+    <strong>Important:</strong> You do not need to install <span class="kbd">dashboard.h</span> as a library.
+    Simply create the <span class="kbd">dashboard.h</span> file in the same Arduino project folder as your main <span class="kbd">.ino</span> file.
+  </div>
+  <div class="callout danger" data-lang="ms">
+    <strong>Penting:</strong> Anda tidak perlu memasang <span class="kbd">dashboard.h</span> sebagai library.
+    Cipta sahaja fail <span class="kbd">dashboard.h</span> dalam folder projek Arduino yang sama dengan fail utama <span class="kbd">.ino</span>.
+  </div>
+
+  <h3 class="subhead" data-lang="en">E. How the ESP32 Web Server Works</h3>
+  <h3 class="subhead" data-lang="ms">E. Bagaimana Pelayan Web ESP32 Berfungsi</h3>
+
+  <p data-lang="en">
+    The ESP32 can host the dashboard through its built-in web server.
+    When your computer or smartphone is connected to the same network as the ESP32,
+    you can open the ESP32 IP address in a web browser to access the dashboard.
+  </p>
+  <p data-lang="ms">
+    ESP32 boleh menghoskan papan pemuka melalui pelayan web terbina dalam.
+    Apabila komputer atau telefon pintar anda disambungkan ke rangkaian yang sama dengan ESP32,
+    anda boleh membuka alamat IP ESP32 dalam pelayar web untuk mengakses papan pemuka.
+  </p>
+
+  <h3 class="subhead" data-lang="en">F. Basic dashboard.h Example</h3>
+  <h3 class="subhead" data-lang="ms">F. Contoh Asas dashboard.h</h3>
+
+  <div class="codebox">
+    <div class="codebar"><span>dashboard.h</span><button class="copy" data-copy="dashboard-code"><span data-lang="en">Copy</span><span data-lang="ms">Salin</span></button></div>
+<pre id="dashboard-code"><code>#ifndef DASHBOARD_H
+#define DASHBOARD_H
+
+const char dashboard_html[] PROGMEM = R"rawliteral(
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta name="viewport"
+        content="width=device-width, initial-scale=1"&gt;
+  &lt;title&gt;ESP32 Dashboard&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+  &lt;h1&gt;ESP32 IoT Dashboard&lt;/h1&gt;
+  &lt;p&gt;Temperature: &lt;span id="temperature"&gt;--&lt;/span&gt; °C&lt;/p&gt;
+  &lt;p&gt;Humidity: &lt;span id="humidity"&gt;--&lt;/span&gt; %&lt;/p&gt;
+
+  &lt;script&gt;
+    async function updateData() {
+      const response = await fetch('/data');
+      const data = await response.json();
+
+      document.getElementById('temperature').textContent =
+        data.temperature;
+
+      document.getElementById('humidity').textContent =
+        data.humidity;
+    }
+
+    setInterval(updateData, 2000);
+    updateData();
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+)rawliteral";
+
+#endif</code></pre>
+  </div>
+
+  <h3 class="subhead" data-lang="en">G. Basic ESP32 Web Server Example</h3>
+  <h3 class="subhead" data-lang="ms">G. Contoh Asas Pelayan Web ESP32</h3>
+
+  <div class="codebox">
+    <div class="codebar"><span>esp32_web_server.ino</span><button class="copy" data-copy="server-code"><span data-lang="en">Copy</span><span data-lang="ms">Salin</span></button></div>
+<pre id="server-code"><code>#include &lt;WiFi.h&gt;
+#include &lt;WebServer.h&gt;
+#include &lt;DHT.h&gt;
+#include "dashboard.h"
+
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+WebServer server(80);
+
+void handleRoot() {
+  server.send_P(200, "text/html", dashboard_html);
+}
+
+void handleData() {
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  String json = "{";
+  json += "\"temperature\":" + String(temperature, 1) + ",";
+  json += "\"humidity\":" + String(humidity, 1);
+  json += "}";
+
+  server.send(200, "application/json", json);
+}
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.print("ESP32 IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", handleRoot);
+  server.on("/data", handleData);
+
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}</code></pre>
+  </div>
+
+  <h3 class="subhead" data-lang="en">H. Interactive Dashboard Demo</h3>
+  <h3 class="subhead" data-lang="ms">H. Demo Papan Pemuka Interaktif</h3>
+
+  <div class="card">
+    <p data-lang="en">
+      You can view an example of an interactive IoT dashboard using the link below.
+      It can be used as a visual reference before integrating the dashboard with real ESP32 hardware.
+    </p>
+    <p data-lang="ms">
+      Anda boleh melihat contoh papan pemuka IoT interaktif melalui pautan di bawah.
+      Ia boleh digunakan sebagai rujukan visual sebelum papan pemuka diintegrasikan dengan perkakasan ESP32 sebenar.
+    </p>
+
+    <a class="btn primary" href="https://iamsyahirah.github.io/dashboard-simulator/" target="_blank" rel="noopener">
+      <span data-lang="en">Open ESP32 Dashboard Simulator</span>
+      <span data-lang="ms">Buka Simulator Papan Pemuka ESP32</span>
+    </a>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="section" id="compare">
+  <div class="section-title-row">
+    <span class="section-index">04</span>
+    <h2 data-lang="en">Which Approach Should You Use?</h2>
+    <h2 data-lang="ms">Pendekatan Mana yang Patut Digunakan?</h2>
+  </div>
+
+  <p class="section-lead" data-lang="en">
+    All three approaches are useful. Choose the method according to the purpose and requirements of your project.
+  </p>
+  <p class="section-lead" data-lang="ms">
+    Ketiga-tiga pendekatan ini berguna. Pilih kaedah berdasarkan tujuan dan keperluan projek anda.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th data-lang="en">Approach</th><th data-lang="ms">Pendekatan</th>
+          <th data-lang="en">Suitable for</th><th data-lang="ms">Sesuai untuk</th>
+          <th data-lang="en">Main advantage</th><th data-lang="ms">Kelebihan utama</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Telegram Bot</td>
+          <td data-lang="en">Direct alert messages</td>
+          <td data-lang="ms">Mesej amaran secara terus</td>
+          <td data-lang="en">Simple phone notifications with custom messages</td>
+          <td data-lang="ms">Notifikasi telefon yang mudah dengan mesej tersuai</td>
+        </tr>
+        <tr>
+          <td>Blynk</td>
+          <td data-lang="en">IoT dashboard + notifications</td>
+          <td data-lang="ms">Papan pemuka IoT + notifikasi</td>
+          <td data-lang="en">Ready-made IoT platform and mobile application</td>
+          <td data-lang="ms">Platform IoT dan aplikasi mudah alih yang sedia digunakan</td>
+        </tr>
+        <tr>
+          <td>ESP32 Web Server</td>
+          <td data-lang="en">Custom local dashboard</td>
+          <td data-lang="ms">Papan pemuka tempatan tersuai</td>
+          <td data-lang="en">Full control over HTML, CSS and JavaScript design</td>
+          <td data-lang="ms">Kawalan penuh terhadap reka bentuk HTML, CSS dan JavaScript</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <span class="status">
+    <span data-lang="en">Guide ready</span><span data-lang="ms">Panduan sedia</span>
+  </span>
+  <span>Tokyo Night inspired · ESP32 · Telegram · Blynk · Web Server</span>
+</footer>
+
+<script>
+const htmlRoot = document.documentElement;
+const enBtn = document.getElementById('lang-en');
+const msBtn = document.getElementById('lang-ms');
+
+function setLanguage(lang){
+  htmlRoot.lang = lang;
+  enBtn.classList.toggle('active', lang === 'en');
+  msBtn.classList.toggle('active', lang === 'ms');
+  localStorage.setItem('esp32-guide-language', lang);
+}
+
+enBtn.addEventListener('click', () => setLanguage('en'));
+msBtn.addEventListener('click', () => setLanguage('ms'));
+
+setLanguage(localStorage.getItem('esp32-guide-language') || 'en');
+
+document.querySelectorAll('.copy').forEach(button => {
+  button.addEventListener('click', async () => {
+    let targetId = button.dataset.copy;
+
+    // For bilingual prompt, copy the active language version.
+    if(targetId === 'prompt-en' && htmlRoot.lang === 'ms'){
+      targetId = 'prompt-ms';
+    }
+
+    const target = document.getElementById(targetId);
+    if(!target) return;
+
+    const original = button.innerHTML;
+
+    try{
+      await navigator.clipboard.writeText(target.innerText);
+      button.textContent = htmlRoot.lang === 'ms' ? 'Disalin' : 'Copied';
+      setTimeout(() => button.innerHTML = original, 1200);
+    }catch(e){
+      button.textContent = htmlRoot.lang === 'ms' ? 'Salin manual' : 'Copy manually';
+      setTimeout(() => button.innerHTML = original, 1400);
+    }
+  });
+});
+
+const navLinks = [...document.querySelectorAll('#nav a')];
+const sections = ['overview','telegram','blynk','webserver','compare']
+  .map(id => document.getElementById(id));
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      navLinks.forEach(a =>
+        a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id)
+      );
+    }
+  });
+},{rootMargin:'-25% 0px -65% 0px'});
+
+sections.forEach(section => observer.observe(section));
+</script>
+
+</body>
+</html>
